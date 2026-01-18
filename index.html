@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Teleprompter Studio Stealth</title>
+    <title>Teleprompter Studio Stealth v2</title>
     <style>
-        :root { --panel-bg: rgba(20, 20, 20, 0.95); --accent: #0f0; }
+        :root { --panel-bg: rgba(20, 20, 20, 0.98); --accent: #0f0; }
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; }
         
         /* Área de Texto */
@@ -23,26 +23,26 @@
         #threshold-line { position: absolute; top: 0; height: 100%; width: 2px; background: red; z-index: 2001; }
         #guide { position: fixed; top: 50%; left: 0; width: 100%; height: 2px; background: rgba(0, 255, 0, 0.25); pointer-events: none; }
 
-        /* Botón para abrir el Menú */
+        /* NUEVA UBICACIÓN: Botón Flotante Superior Derecha */
         #menuToggle {
-            position: fixed; bottom: 20px; right: 20px; width: 55px; height: 55px;
-            background: #333; border-radius: 50%; display: flex; align-items: center;
-            justify-content: center; font-size: 24px; z-index: 3000; border: 1px solid #555;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); cursor: pointer;
+            position: fixed; top: 20px; right: 20px; width: 50px; height: 50px;
+            background: rgba(50, 50, 50, 0.7); border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; font-size: 22px; z-index: 3000; border: 1px solid #555;
+            backdrop-filter: blur(5px); cursor: pointer;
         }
 
         /* Panel Desplegable (Drawer) */
         #sidePanel {
             position: fixed; bottom: 0; left: 0; width: 100%; height: auto;
-            max-height: 70vh; background: var(--panel-bg); z-index: 2500;
+            max-height: 75vh; background: var(--panel-bg); z-index: 2500;
             border-top: 1px solid #444; border-radius: 25px 25px 0 0;
             transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             padding: 20px; box-sizing: border-box; overflow-y: auto;
-            backdrop-filter: blur(15px);
+            backdrop-filter: blur(20px);
         }
         #sidePanel.open { transform: translateY(0); }
 
-        /* Controles Quirúrgicos */
+        /* Controles */
         .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
         .step-control {
             display: flex; flex-direction: column; align-items: center; gap: 6px;
@@ -52,8 +52,8 @@
         .step-buttons { display: flex; align-items: center; gap: 12px; }
         .val-display { font-size: 20px; font-weight: bold; color: var(--accent); min-width: 35px; text-align: center; font-family: monospace; }
         
-        button { background: #333; color: white; border: none; width: 42px; height: 42px; border-radius: 12px; font-size: 20px; cursor: pointer; }
-        button:active { transform: scale(0.9); background: #444; }
+        button.ctrl-btn { background: #333; color: white; border: none; width: 42px; height: 42px; border-radius: 12px; font-size: 20px; cursor: pointer; }
+        button.ctrl-btn:active { transform: scale(0.9); background: #444; }
         
         #startBtn { 
             width: 100%; height: 55px; background: #222; color: white; border: 1px solid #444;
@@ -62,7 +62,7 @@
         #startBtn.active { background: #d32f2f; border-color: #ff5555; }
         
         .footer-row { display: flex; gap: 10px; margin-top: 12px; }
-        .footer-row button { flex: 1; font-size: 16px; background: #222; }
+        .footer-row button { flex: 1; height: 45px; font-size: 18px; background: #222; border: 1px solid #333; color: white; border-radius: 12px; }
     </style>
 </head>
 <body>
@@ -73,15 +73,15 @@
 </div>
 <div id="guide"></div>
 
+<div id="menuToggle">⚙️</div>
+
 <div id="viewport">
     <div id="margin-box">
-        <div id="text" contenteditable="true" spellcheck="false">Pantalla limpia. 
-Toca el icono de engranaje ⚙️ para abrir los ajustes.
-Configura y luego cierra el menú para grabar sin distracciones.</div>
+        <div id="text" contenteditable="true" spellcheck="false">Configuración Final. 
+El botón de ajustes ⚙️ ahora está en la esquina superior derecha.
+Toca para configurar tamaño, velocidad y sensor.</div>
     </div>
 </div>
-
-<div id="menuToggle">⚙️</div>
 
 <div id="sidePanel">
     <button id="startBtn">🎙️ ACTIVAR SENSOR POR VOZ</button>
@@ -90,33 +90,33 @@ Configura y luego cierra el menú para grabar sin distracciones.</div>
         <div class="step-control">
             <span class="step-label">Velocidad</span>
             <div class="step-buttons">
-                <button onclick="changeVal('speed', -1)">-</button>
+                <button class="ctrl-btn" onclick="changeVal('speed', -1)">-</button>
                 <span id="speedVal" class="val-display">25</span>
-                <button onclick="changeVal('speed', 1)">+</button>
+                <button class="ctrl-btn" onclick="changeVal('speed', 1)">+</button>
             </div>
         </div>
         <div class="step-control">
             <span class="step-label">Sensibilidad</span>
             <div class="step-buttons">
-                <button onclick="changeVal('sens', -1)">-</button>
+                <button class="ctrl-btn" onclick="changeVal('sens', -1)">-</button>
                 <span id="sensVal" class="val-display">15</span>
-                <button onclick="changeVal('sens', 1)">+</button>
+                <button class="ctrl-btn" onclick="changeVal('sens', 1)">+</button>
             </div>
         </div>
         <div class="step-control">
             <span class="step-label">Texto (A)</span>
             <div class="step-buttons">
-                <button onclick="changeVal('fontSize', -2)">-</button>
+                <button class="ctrl-btn" onclick="changeVal('fontSize', -2)">-</button>
                 <span id="fontSizeVal" class="val-display">45</span>
-                <button onclick="changeVal('fontSize', 2)">+</button>
+                <button class="ctrl-btn" onclick="changeVal('fontSize', 2)">+</button>
             </div>
         </div>
         <div class="step-control">
             <span class="step-label">Márgenes</span>
             <div class="step-buttons">
-                <button onclick="changeVal('margin', -5)">-</button>
+                <button class="ctrl-btn" onclick="changeVal('margin', -5)">-</button>
                 <span id="marginVal" class="val-display">85</span>
-                <button onclick="changeVal('margin', 5)">+</button>
+                <button class="ctrl-btn" onclick="changeVal('margin', 5)">+</button>
             </div>
         </div>
     </div>
@@ -193,7 +193,7 @@ Configura y luego cierra el menú para grabar sin distracciones.</div>
                 startBtn.classList.add('active');
                 startBtn.innerText = "🛑 DETENER SENSOR";
                 textElem.contentEditable = "false";
-                // Cerramos menú automáticamente al empezar para limpiar pantalla
+                // Cerramos menú automáticamente tras empezar
                 setTimeout(() => sidePanel.classList.remove('open'), 500);
             } catch (e) { alert("Micro denegado."); }
         } else {

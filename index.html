@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Teleprompter Estable Pro</title>
+<title>Teleprompter Pro 1-100</title>
 <style>
   body { margin: 0; background: black; color: white; font-family: Arial, sans-serif; overflow: hidden; }
   
   #viewport {
-    height: 100vh; overflow-y: scroll; scroll-behavior: auto;
+    height: 100vh; overflow-y: scroll; scroll-behavior: smooth;
     display: flex; flex-direction: column; align-items: center;
   }
   #viewport::-webkit-scrollbar { display: none; }
@@ -25,24 +25,36 @@
 
   .mirror { transform: scaleX(-1); }
 
-  /* Guía de lectura central */
+  /* Guía visual verde */
   #line-guide {
     position: fixed; top: 50%; left: 0; width: 100%; height: 2px;
-    background: rgba(255, 0, 0, 0.3); pointer-events: none; z-index: 10;
+    background: rgba(0, 255, 0, 0.4); pointer-events: none; z-index: 10;
   }
 
   #controls {
     position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
-    display: flex; flex-wrap: wrap; justify-content: center; gap: 5px;
-    background: rgba(30, 30, 30, 0.9); padding: 10px; border-radius: 10px; z-index: 100;
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+    background: rgba(20, 20, 20, 0.95); padding: 12px; border-radius: 12px; z-index: 100;
+    width: 95%; max-width: 650px; border: 1px solid #444;
+  }
+
+  .config-group {
+    display: flex; align-items: center; gap: 5px; background: #222;
+    padding: 5px 10px; border-radius: 5px; border: 1px solid #555;
+  }
+
+  input[type="number"] {
+    width: 55px; background: #000; color: #0f0; border: 1px solid #0f0;
+    padding: 5px; text-align: center; border-radius: 3px; font-weight: bold; font-size: 16px;
   }
 
   button {
     background: #444; color: white; border: none; padding: 10px;
-    border-radius: 5px; cursor: pointer; font-size: 14px;
+    border-radius: 5px; cursor: pointer; font-size: 13px; min-width: 40px;
   }
 
-  .active { background: #d32f2f !important; font-weight: bold; }
+  .active { background: #d32f2f !important; box-shadow: 0 0 8px red; }
+  label { font-size: 11px; color: #aaa; }
 </style>
 </head>
 <body>
@@ -51,11 +63,18 @@
 
 <div id="viewport">
   <div id="margin-box">
-    <div id="text" contenteditable="true" spellcheck="false">Pega tu guion aquí. El texto se moverá de forma constante. Si hablas, el sistema intentará ajustar la velocidad para seguirte.</div>
+    <div id="text" contenteditable="true" spellcheck="false">Pega tu guion aquí. 
+Velocidad sugerida: 15-25. Rango: 1 a 100.
+Si hablas y te quedas atrás, el texto retrocederá automáticamente al centro.</div>
   </div>
 </div>
 
 <div id="controls">
+  <div class="config-group">
+    <label>VEL (1-100):</label>
+    <input type="number" id="speedInput" value="15" min="1" max="100">
+  </div>
+  
   <button id="micBtn">🎙️ Voz Off</button>
   <button id="mirrorBtn">🪞 Espejo</button>
   <button id="plusBtn">A+</button>
@@ -73,22 +92,26 @@ const viewport = document.getElementById("viewport");
 const textElem = document.getElementById("text");
 const marginBox = document.getElementById("margin-box");
 const micBtn = document.getElementById("micBtn");
+const speedInput = document.getElementById("speedInput");
 
 let running = false;
-let speed = 0.5; // Velocidad base constante (píxeles por frame)
 let scrollPos = 0;
 
-// MOTOR DE MOVIMIENTO CONSTANTE
+// MOTOR DE MOVIMIENTO CONSTANTE (Escalado 1-100)
 function scrollLoop() {
   if (running) {
-    scrollPos += speed;
+    // Dividimos por 20 para que el rango 1-100 sea manejable en píxeles por frame
+    let userSpeed = parseFloat(speedInput.value) || 0;
+    let actualSpeed = userSpeed / 20; 
+    
+    scrollPos += actualSpeed;
     viewport.scrollTop = scrollPos;
   }
   requestAnimationFrame(scrollLoop);
 }
 scrollLoop();
 
-// RECONOCIMIENTO DE VOZ
+// RECONOCIMIENTO DE VOZ PARA RETROCESO
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition;
 
@@ -103,13 +126,13 @@ if (SR) {
     for (let i = event.resultIndex; i < event.results.length; i++) {
       transcript += event.results[i][0].transcript;
     }
-    ajustarVelocidad(transcript.toLowerCase().trim());
+    reubicarPorVoz(transcript.toLowerCase().trim());
   };
 
   recognition.onend = () => { if (running) recognition.start(); };
 }
 
-function ajustarVelocidad(voz) {
+function reubicarPorVoz(voz) {
   const palabras = voz.split(" ");
   const ultima = palabras[palabras.length - 1];
   const contenido = textElem.innerText.toLowerCase();
@@ -128,15 +151,14 @@ function ajustarVelocidad(voz) {
           range.setEnd(node, index - count + ultima.length);
           const rect = range.getBoundingClientRect();
           
-          // LÓGICA DE VELOCIDAD:
-          // Si la palabra está por debajo del centro, acelera.
-          // Si está por arriba, frena.
-          const error = rect.top - (window.innerHeight / 2);
+          const centroPantalla = window.innerHeight / 2;
           
-          if (error > 20) speed = 1.5;      // Vas rápido, el texto acelera
-          else if (error < -20) speed = 0.2; // Vas lento, el texto frena
-          else speed = 0.6;                 // Estás en el centro, velocidad normal
-          
+          // Si la palabra está POR ARRIBA del centro (te quedaste atrás), el scroll regresa
+          if (rect.top < centroPantalla - 30) {
+            const ajuste = viewport.scrollTop + rect.top - centroPantalla;
+            scrollPos = ajuste; 
+            viewport.scrollTo({ top: ajuste, behavior: 'smooth' });
+          }
         } catch(e) {}
         break;
       }
@@ -155,7 +177,6 @@ micBtn.onclick = () => {
     if (recognition) recognition.start();
   } else {
     running = false;
-    speed = 0.5;
     micBtn.classList.remove("active");
     micBtn.innerText = "🎙️ Voz OFF";
     textElem.contentEditable = "true";
@@ -163,12 +184,15 @@ micBtn.onclick = () => {
   }
 };
 
-// CONTROLES ADICIONALES
+// --- CONTROLES DE INTERFAZ ---
 document.getElementById("mirrorBtn").onclick = () => textElem.classList.toggle("mirror");
 document.getElementById("plusBtn").onclick = () => { textElem.style.fontSize = (parseInt(window.getComputedStyle(textElem).fontSize) + 4) + "px"; };
 document.getElementById("minusBtn").onclick = () => { textElem.style.fontSize = (parseInt(window.getComputedStyle(textElem).fontSize) - 4) + "px"; };
-document.getElementById("mPlus").onclick = () => { marginBox.style.width = Math.min(100, parseInt(marginBox.style.width || 80) + 5) + "%"; };
-document.getElementById("mMinus").onclick = () => { marginBox.style.width = Math.max(20, parseInt(marginBox.style.width || 80) - 5) + "%"; };
+
+let mWidth = 80;
+document.getElementById("mPlus").onclick = () => { mWidth = Math.min(100, mWidth + 5); marginBox.style.width = mWidth + "%"; };
+document.getElementById("mMinus").onclick = () => { mWidth = Math.max(20, mWidth - 5); marginBox.style.width = mWidth + "%"; };
+
 document.getElementById("leftBtn").onclick = () => textElem.style.textAlign = "left";
 document.getElementById("centerBtn").onclick = () => textElem.style.textAlign = "center";
 document.getElementById("rightBtn").onclick = () => textElem.style.textAlign = "right";

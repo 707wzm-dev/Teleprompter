@@ -3,48 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Teleprompter Sensor Pro</title>
+    <title>Teleprompter Quirúrgico</title>
     <style>
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; }
         
         #viewport {
             height: 100vh; overflow-y: auto; 
             display: flex; flex-direction: column; align-items: center;
-            scroll-behavior: auto; /* Desactivamos smooth para respuesta instantánea */
         }
         #viewport::-webkit-scrollbar { display: none; }
-
         #margin-box { width: 85%; padding-top: 45vh; padding-bottom: 80vh; }
         #text { width: 100%; font-size: 45px; line-height: 1.6; outline: none; white-space: pre-wrap; }
 
         /* Monitor de Audio */
-        #audio-container {
-            position: fixed; top: 0; left: 0; width: 100%; height: 10px; 
-            background: #222; z-index: 1000;
-        }
+        #audio-container { position: fixed; top: 0; left: 0; width: 100%; height: 8px; background: #222; z-index: 1000; }
         #audio-bar { height: 100%; background: #0f0; width: 0%; transition: width 0.05s; }
-        #threshold-line {
-            position: absolute; top: 0; height: 100%; width: 2px; 
-            background: red; z-index: 1001;
-        }
+        #threshold-line { position: absolute; top: 0; height: 100%; width: 2px; background: red; z-index: 1001; }
 
-        #guide {
-            position: fixed; top: 50%; left: 0; width: 100%; height: 2px;
-            background: rgba(0, 255, 0, 0.3); pointer-events: none;
-        }
+        #guide { position: fixed; top: 50%; left: 0; width: 100%; height: 2px; background: rgba(0, 255, 0, 0.3); pointer-events: none; }
 
+        /* Panel de Control de Alta Precisión */
         #controls {
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
-            background: rgba(20, 20, 20, 0.95); padding: 15px; border-radius: 20px;
-            width: 90%; max-width: 450px; border: 1px solid #444;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+            background: rgba(25, 25, 25, 0.98); padding: 20px; border-radius: 25px;
+            width: 92%; max-width: 480px; border: 1px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        button { background: #444; color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; }
-        .active { background: #d32f2f !important; }
+        .step-control {
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            background: #1a1a1a; padding: 10px; border-radius: 15px; border: 1px solid #333;
+        }
+        .step-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .step-buttons { display: flex; align-items: center; gap: 15px; }
+        .val-display { font-size: 22px; font-weight: bold; color: #0f0; min-width: 40px; text-align: center; font-family: monospace; }
         
-        .slider-box { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: #aaa; text-align: center; }
-        input[type="range"] { width: 100%; }
+        button { 
+            background: #3a3a3a; color: white; border: none; 
+            width: 45px; height: 45px; border-radius: 12px; 
+            font-size: 20px; font-weight: bold; cursor: pointer;
+        }
+        button:active { background: #555; transform: scale(0.95); }
+        
+        #startBtn { 
+            grid-column: span 2; background: #333; height: 55px; font-size: 16px; 
+            letter-spacing: 1px; border: 1px solid #555;
+        }
+        .active { background: #d32f2f !important; border-color: #ff5555 !important; }
+        
+        .extra-btns { grid-column: span 2; display: flex; gap: 10px; }
+        .extra-btns button { flex: 1; height: 40px; font-size: 14px; background: #222; }
     </style>
 </head>
 <body>
@@ -57,28 +65,37 @@
 
 <div id="viewport">
     <div id="margin-box">
-        <div id="text" contenteditable="true" spellcheck="false">¡PRUEBA DE VOZ! 
-1. Sube la VELOCIDAD a la mitad.
-2. Baja la SENSIBILIDAD hasta que la barra verde supere la línea roja cuando hables.
-3. El texto DEBE moverse mientras hables.</div>
+        <div id="text" contenteditable="true" spellcheck="false">¡CONTROL QUIRÚRGICO!
+Ajusta la SENSIBILIDAD hasta que solo tu voz active la barra verde.
+Ajusta la VELOCIDAD punto por punto para que el scroll sea perfecto.</div>
     </div>
 </div>
 
 <div id="controls">
-    <button id="startBtn" style="grid-column: span 2;">🎙️ ACTIVAR SENSOR</button>
+    <button id="startBtn">🎙️ ACTIVAR SENSOR</button>
     
-    <div class="slider-box">
-        <label>VELOCIDAD</label>
-        <input type="range" id="speedRange" min="5" max="100" value="25">
-    </div>
-    
-    <div class="slider-box">
-        <label>SENSIBILIDAD (Línea Roja)</label>
-        <input type="range" id="sensRange" min="1" max="100" value="15">
+    <div class="step-control">
+        <span class="step-label">Velocidad</span>
+        <div class="step-buttons">
+            <button onclick="changeVal('speed', -1)">-</button>
+            <span id="speedVal" class="val-display">25</span>
+            <button onclick="changeVal('speed', 1)">+</button>
+        </div>
     </div>
 
-    <button id="mirrorBtn">🪞 ESPEJO</button>
-    <button id="resetBtn">🔄 RESET</button>
+    <div class="step-control">
+        <span class="step-label">Sensibilidad</span>
+        <div class="step-buttons">
+            <button onclick="changeVal('sens', -1)">-</button>
+            <span id="sensVal" class="val-display">15</span>
+            <button onclick="changeVal('sens', 1)">+</button>
+        </div>
+    </div>
+
+    <div class="extra-btns">
+        <button id="mirrorBtn">🪞 ESPEJO</button>
+        <button id="resetBtn">🔄 RESET</button>
+    </div>
 </div>
 
 <script>
@@ -86,36 +103,39 @@
     const textElem = document.getElementById('text');
     const audioBar = document.getElementById('audio-bar');
     const thresholdLine = document.getElementById('threshold-line');
-    const speedRange = document.getElementById('speedRange');
-    const sensRange = document.getElementById('sensRange');
     const startBtn = document.getElementById('startBtn');
 
     let audioContext, analyser, dataArray;
     let isRunning = false;
     let scrollPos = 0;
-
-    // Actualizar posición de la línea roja visualmente
-    sensRange.oninput = () => {
-        thresholdLine.style.left = sensRange.value + "%";
+    
+    // Valores de estado
+    let config = {
+        speed: 25,
+        sens: 15
     };
-    thresholdLine.style.left = sensRange.value + "%";
+
+    function changeVal(type, delta) {
+        config[type] = Math.max(1, Math.min(100, config[type] + delta));
+        document.getElementById(type + 'Val').innerText = config[type];
+        if(type === 'sens') {
+            thresholdLine.style.left = config.sens + "%";
+        }
+    }
+
+    thresholdLine.style.left = config.sens + "%";
 
     function mainLoop() {
         if (isRunning && analyser) {
             analyser.getByteFrequencyData(dataArray);
-            
-            // Calculamos volumen
             let values = 0;
             for (let i = 0; i < dataArray.length; i++) values += dataArray[i];
-            let volume = (values / dataArray.length) * 1.5; // Amplificamos escala
+            let volume = (values / dataArray.length) * 1.5;
 
             audioBar.style.width = Math.min(volume, 100) + "%";
 
-            // SI EL VOLUMEN SUPERA EL UMBRAL
-            if (volume > parseInt(sensRange.value)) {
-                // Multiplicamos por un factor para que el rango 5-100 sea útil
-                let moveAmount = parseFloat(speedRange.value) / 15;
-                scrollPos += moveAmount;
+            if (volume > config.sens) {
+                scrollPos += (config.speed / 15);
                 viewport.scrollTop = Math.floor(scrollPos);
             }
         }
@@ -134,7 +154,7 @@
             dataArray = new Uint8Array(analyser.frequencyBinCount);
             return true;
         } catch (err) {
-            alert("No se pudo acceder al micro. Revisa permisos.");
+            alert("Acceso denegado al micro.");
             return false;
         }
     }

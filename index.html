@@ -2,24 +2,37 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Teleprompter Pro</title>
+    <title>Teleprompter Ultra-Realtime</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#000000">
-
     <link rel="manifest" href="manifest.json">
 
     <style>
         body { margin: 0; background: black; color: white; font-family: sans-serif; overflow: hidden; }
-        #viewport { height: 100vh; overflow-y: scroll; display: flex; flex-direction: column; align-items: center; scroll-behavior: smooth; }
+        #viewport { 
+            height: 100vh; overflow-y: scroll; 
+            display: flex; flex-direction: column; align-items: center; 
+            scroll-behavior: smooth; /* Movimiento suave de seda */
+        }
         #viewport::-webkit-scrollbar { display: none; }
-        #margin-box { width: 85%; padding-top: 50vh; padding-bottom: 85vh; }
-        #text { width: 100%; font-size: 42px; line-height: 1.6; outline: none; white-space: pre-wrap; word-wrap: break-word; }
-        #guide { position: fixed; top: 50%; left: 0; width: 100%; height: 2px; background: #0f0; opacity: 0.3; pointer-events: none; }
-        #controls { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; background: rgba(30,30,30,0.9); padding: 12px; border-radius: 20px; width: 90%; max-width: 500px; border: 1px solid #444; }
-        button { background: #444; color: white; border: none; padding: 12px 5px; border-radius: 12px; font-size: 16px; }
-        .active { background: #ff3b30 !important; }
+        #margin-box { width: 85%; padding-top: 45vh; padding-bottom: 85vh; }
+        #text { 
+            width: 100%; font-size: 44px; line-height: 1.5; 
+            outline: none; white-space: pre-wrap; color: #eee;
+        }
+        #guide { 
+            position: fixed; top: 50%; left: 0; width: 100%; height: 2px; 
+            background: #0f0; opacity: 0.5; pointer-events: none; z-index: 10;
+        }
+        #controls { 
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); 
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; 
+            background: rgba(20,20,20,0.95); padding: 15px; border-radius: 25px; 
+            width: 90%; max-width: 500px; border: 1px solid #333;
+        }
+        button { background: #333; color: white; border: none; padding: 15px 5px; border-radius: 15px; font-size: 18px; }
+        .active { background: #d32f2f !important; box-shadow: 0 0 15px red; }
         .btn-large { grid-column: span 2; font-weight: bold; }
         .mirror { transform: scaleX(-1); }
     </style>
@@ -27,7 +40,7 @@
 <body>
     <div id="guide"></div>
     <div id="viewport">
-        <div id="margin-box"><div id="text" contenteditable="true">Pega tu guion aquí...</div></div>
+        <div id="margin-box"><div id="text" contenteditable="true">Pega tu guion aquí. Lee con naturalidad y verás que el texto se mueve INSTANTÁNEAMENTE con cada sílaba.</div></div>
     </div>
     <div id="controls">
         <button id="micBtn" class="btn-large">🎙️ VOZ</button>
@@ -43,56 +56,82 @@
     </div>
 
     <script>
-        // ESTO ES LO QUE ACTIVA EL MODO APP REAL
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('data:application/javascript,self.addEventListener("fetch", function(event){});').catch(e => console.log(e));
-            });
-        }
-
         const viewport = document.getElementById("viewport"), textElem = document.getElementById("text"), micBtn = document.getElementById("micBtn");
         let isListening = false, recognition, lastFoundIndex = 0, maxScroll = 0;
+
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
         if (SR) {
             recognition = new SR();
-            recognition.lang = 'es-ES'; recognition.continuous = true; recognition.interimResults = true;
+            recognition.lang = 'es-ES';
+            recognition.continuous = true;
+            recognition.interimResults = true; // ESTO ES LA CLAVE DEL TIEMPO REAL
+
             recognition.onresult = (event) => {
                 let transcript = "";
-                for (let i = event.resultIndex; i < event.results.length; i++) transcript += event.results[i][0].transcript;
-                const palabras = transcript.toLowerCase().trim().split(" ");
-                const ultima = palabras[palabras.length - 1];
-                const index = textElem.innerText.toLowerCase().indexOf(ultima, lastFoundIndex);
-                if (index !== -1) {
-                    lastFoundIndex = index;
-                    const range = document.createRange();
-                    const walker = document.createTreeWalker(textElem, NodeFilter.SHOW_TEXT, null, false);
-                    let node, count = 0;
-                    while (node = walker.nextNode()) {
-                        let nextCount = count + node.textContent.length;
-                        if (index >= count && index < nextCount) {
-                            try {
-                                range.setStart(node, index - count);
-                                range.setEnd(node, index - count + ultima.length);
-                                const rect = range.getBoundingClientRect();
-                                const targetPos = viewport.scrollTop + rect.top - (window.innerHeight / 2);
-                                if (targetPos > maxScroll) { maxScroll = targetPos; viewport.scrollTo({ top: targetPos, behavior: 'smooth' }); }
-                            } catch(e) {}
-                            break;
-                        }
-                        count = nextCount;
-                    }
+                // Procesamos todos los resultados, incluidos los que aún no son finales
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
                 }
+                
+                const palabras = transcript.toLowerCase().trim().split(" ");
+                // Analizamos las últimas 3 palabras detectadas para máxima precisión en el avance
+                const fragmento = palabras.slice(-3);
+                
+                fragmento.forEach(palabra => {
+                    const contenido = textElem.innerText.toLowerCase();
+                    const index = contenido.indexOf(palabra, lastFoundIndex);
+
+                    if (index !== -1) {
+                        lastFoundIndex = index;
+                        const range = document.createRange();
+                        const walker = document.createTreeWalker(textElem, NodeFilter.SHOW_TEXT, null, false);
+                        let node, count = 0;
+
+                        while (node = walker.nextNode()) {
+                            let nextCount = count + node.textContent.length;
+                            if (index >= count && index < nextCount) {
+                                try {
+                                    range.setStart(node, index - count);
+                                    range.setEnd(node, index - count + palabra.length);
+                                    const rect = range.getBoundingClientRect();
+                                    const targetPos = viewport.scrollTop + rect.top - (window.innerHeight / 2);
+
+                                    // Avanzar solo si es hacia adelante
+                                    if (targetPos > maxScroll) {
+                                        maxScroll = targetPos;
+                                        viewport.scrollTo({ top: targetPos, behavior: 'smooth' });
+                                    }
+                                } catch(e) {}
+                                break;
+                            }
+                            count = nextCount;
+                        }
+                    }
+                });
             };
+
             recognition.onend = () => { if (isListening) recognition.start(); };
         }
 
         micBtn.onclick = () => {
-            if (!isListening) { isListening = true; micBtn.classList.add("active"); micBtn.innerHTML = "🛑 STOP"; textElem.contentEditable = "false"; maxScroll = viewport.scrollTop; recognition.start(); }
-            else { isListening = false; micBtn.classList.remove("active"); micBtn.innerHTML = "🎙️ VOZ"; textElem.contentEditable = "true"; recognition.stop(); }
+            if (!isListening) {
+                isListening = true;
+                micBtn.classList.add("active");
+                micBtn.innerHTML = "🛑 STOP";
+                textElem.contentEditable = "false";
+                maxScroll = viewport.scrollTop;
+                recognition.start();
+            } else {
+                isListening = false;
+                micBtn.classList.remove("active");
+                micBtn.innerHTML = "🎙️ VOZ";
+                textElem.contentEditable = "true";
+                recognition.stop();
+            }
         };
 
-        // Botones de interfaz
+        // Otros controles
         document.getElementById("mirrorBtn").onclick = () => textElem.classList.toggle("mirror");
         document.getElementById("plusBtn").onclick = () => textElem.style.fontSize = (parseInt(window.getComputedStyle(textElem).fontSize) + 4) + "px";
         document.getElementById("minusBtn").onclick = () => textElem.style.fontSize = (parseInt(window.getComputedStyle(textElem).fontSize) - 4) + "px";

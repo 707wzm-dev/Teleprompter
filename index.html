@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Teleprompter Studio Stealth v2</title>
+    <title>Teleprompter Studio Mirror Fixed</title>
     <style>
         :root { --panel-bg: rgba(20, 20, 20, 0.98); --accent: #0f0; }
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; }
@@ -14,8 +14,22 @@
             display: flex; flex-direction: column; align-items: center;
         }
         #viewport::-webkit-scrollbar { display: none; }
-        #margin-box { width: 85%; padding-top: 45vh; padding-bottom: 85vh; transition: all 0.3s ease; }
-        #text { width: 100%; font-size: 45px; line-height: 1.6; outline: none; white-space: pre-wrap; text-align: center; }
+        
+        /* Ajuste de Margen y Espejo */
+        #margin-box { 
+            width: 85%; padding-top: 45vh; padding-bottom: 85vh; 
+            transition: width 0.3s ease, transform 0.3s ease; 
+        }
+        
+        /* CLASE ESPEJO CORREGIDA */
+        .mirror-active { 
+            transform: scaleX(-1) !important; 
+        }
+
+        #text { 
+            width: 100%; font-size: 45px; line-height: 1.6; 
+            outline: none; white-space: pre-wrap; text-align: center;
+        }
 
         /* Guías y Monitores */
         #audio-container { position: fixed; top: 0; left: 0; width: 100%; height: 6px; background: #111; z-index: 2000; }
@@ -23,7 +37,7 @@
         #threshold-line { position: absolute; top: 0; height: 100%; width: 2px; background: red; z-index: 2001; }
         #guide { position: fixed; top: 50%; left: 0; width: 100%; height: 2px; background: rgba(0, 255, 0, 0.25); pointer-events: none; }
 
-        /* NUEVA UBICACIÓN: Botón Flotante Superior Derecha */
+        /* Botón Ajustes superior derecha */
         #menuToggle {
             position: fixed; top: 20px; right: 20px; width: 50px; height: 50px;
             background: rgba(50, 50, 50, 0.7); border-radius: 50%; display: flex; align-items: center;
@@ -31,7 +45,7 @@
             backdrop-filter: blur(5px); cursor: pointer;
         }
 
-        /* Panel Desplegable (Drawer) */
+        /* Panel Desplegable */
         #sidePanel {
             position: fixed; bottom: 0; left: 0; width: 100%; height: auto;
             max-height: 75vh; background: var(--panel-bg); z-index: 2500;
@@ -42,7 +56,6 @@
         }
         #sidePanel.open { transform: translateY(0); }
 
-        /* Controles */
         .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
         .step-control {
             display: flex; flex-direction: column; align-items: center; gap: 6px;
@@ -77,9 +90,9 @@
 
 <div id="viewport">
     <div id="margin-box">
-        <div id="text" contenteditable="true" spellcheck="false">Configuración Final. 
-El botón de ajustes ⚙️ ahora está en la esquina superior derecha.
-Toca para configurar tamaño, velocidad y sensor.</div>
+        <div id="text" contenteditable="true" spellcheck="false">¡Modo Espejo Corregido!
+Toca el icono 🪞 en el menú para rotar el texto.
+Esto es útil si usas un cristal físico frente a la cámara.</div>
     </div>
 </div>
 
@@ -142,7 +155,6 @@ Toca para configurar tamaño, velocidad y sensor.</div>
     let config = { speed: 25, sens: 15, fontSize: 45, margin: 85, alignIdx: 1 };
     const aligns = ['left', 'center', 'right'];
 
-    // Toggle del Menú
     menuToggle.onclick = () => sidePanel.classList.toggle('open');
 
     function changeVal(type, delta) {
@@ -159,6 +171,11 @@ Toca para configurar tamaño, velocidad y sensor.</div>
     document.getElementById('alignBtn').onclick = () => {
         config.alignIdx = (config.alignIdx + 1) % 3;
         textElem.style.textAlign = aligns[config.alignIdx];
+    };
+
+    // FUNCIÓN ESPEJO CORREGIDA
+    document.getElementById('mirrorBtn').onclick = () => {
+        marginBox.classList.toggle('mirror-active');
     };
 
     function mainLoop() {
@@ -193,7 +210,6 @@ Toca para configurar tamaño, velocidad y sensor.</div>
                 startBtn.classList.add('active');
                 startBtn.innerText = "🛑 DETENER SENSOR";
                 textElem.contentEditable = "false";
-                // Cerramos menú automáticamente tras empezar
                 setTimeout(() => sidePanel.classList.remove('open'), 500);
             } catch (e) { alert("Micro denegado."); }
         } else {
@@ -204,7 +220,6 @@ Toca para configurar tamaño, velocidad y sensor.</div>
         }
     };
 
-    document.getElementById('mirrorBtn').onclick = () => textElem.classList.toggle('mirror');
     document.getElementById('resetBtn').onclick = () => { scrollPos = 0; viewport.scrollTop = 0; };
 </script>
 </body>

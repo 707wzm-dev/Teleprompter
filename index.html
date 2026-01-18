@@ -3,195 +3,144 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Teleprompter Pro</title>
-
+<title>Teleprompter por Voz</title>
 <style>
   body {
-    margin: 0;
-    background: black;
-    color: white;
-    font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-    overflow: hidden;
-    touch-action: manipulation;
+    margin: 0; background: black; color: white;
+    font-family: Arial, sans-serif; overflow: hidden;
   }
-
-  /* Contenedor principal que permite el scroll */
   #viewport {
-    height: 100vh;
-    overflow-y: scroll;
+    height: 100vh; overflow-y: hidden; position: relative;
     scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
   }
-
-  /* Ocultar barra de scroll para estética de teleprompter */
-  #viewport::-webkit-scrollbar {
-    display: none;
-  }
-
   #text {
-    padding: 60px 40px;
-    padding-bottom: 80vh; 
-    font-size: 38px;
-    line-height: 1.5;
-    max-width: 90%;
-    margin: auto;
-    outline: none;
-    transition: font-size 0.2s, max-width 0.2s;
+    padding: 50vh 40px; /* Margen superior para que la primera frase empiece al centro */
+    font-size: 45px; line-height: 1.6;
+    max-width: 85%; margin: auto; outline: none;
+    transition: all 0.3s ease;
   }
-
-  /* Modo Espejo */
-  .mirror-mode {
-    transform: scaleX(-1);
-  }
-
+  .highlight { color: #2ecc71; font-weight: bold; } /* Palabra detectada */
+  
   #controls {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
-    background: rgba(30, 30, 30, 0.9);
-    padding: 12px;
-    border-radius: 15px;
-    z-index: 100;
-    width: 90%;
-    max-width: 500px;
-    border: 1px solid #444;
+    position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px; background: rgba(0,0,0,0.8);
+    padding: 10px; border-radius: 12px; z-index: 100;
   }
-
-  button {
-    font-size: 16px;
-    padding: 10px;
-    cursor: pointer;
-    background: #333;
-    color: white;
-    border: 1px solid #555;
-    border-radius: 8px;
-    min-width: 44px;
-  }
-
-  button:active {
-    background: #555;
-  }
-
-  .active-mic {
-    background: #d32f2f !important;
-    animation: pulse 1.5s infinite;
-  }
-
-  @keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.6; }
-    100% { opacity: 1; }
+  button { padding: 10px; cursor: pointer; border-radius: 5px; border: none; }
+  .active { background: red; color: white; }
+  
+  /* Guía visual central */
+  #marker {
+    position: fixed; top: 50%; left: 0; width: 100%; height: 2px;
+    background: rgba(255, 255, 255, 0.2); pointer-events: none;
   }
 </style>
 </head>
-
 <body>
+
+<div id="marker"></div>
 
 <div id="viewport">
   <div id="text" contenteditable="true" spellcheck="false">
-    ¡Bienvenido! Pega tu guion aquí. <br><br>
-    1. Ajusta el tamaño con A+ y A-.<br>
-    2. Usa el botón Espejo si usas un cristal físico.<br>
-    3. Pulsa el Micrófono para iniciar el auto-scroll.
+    Pega tu guion aquí. Al hablar, el sistema buscará las palabras y las pondrá en el centro. 
+    Prueba diciendo exactamente lo que está escrito en este párrafo.
   </div>
 </div>
 
 <div id="controls">
-  <button id="micBtn" title="Iniciar Voz y Scroll">🎙️</button>
-  <button id="mirrorBtn" title="Modo Espejo">🪞</button>
+  <button id="micBtn">🎙️ Iniciar Voz</button>
   <button id="plusBtn">A+</button>
   <button id="minusBtn">A-</button>
-  <button id="marginPlus">↔️+</button>
-  <button id="marginMinus">↔️-</button>
-  <button id="leftBtn">⬅️</button>
-  <button id="centerBtn">⬆️</button>
-  <button id="speedUp">🚀</button>
-  <button id="speedDown">🐢</button>
+  <button id="resetBtn">🔄 Reset</button>
 </div>
 
 <script>
 const viewport = document.getElementById("viewport");
-const text = document.getElementById("text");
+const textElem = document.getElementById("text");
 const micBtn = document.getElementById("micBtn");
 
-let listening = false;
-let scrollPos = 0;
-let speed = 0.8; // Velocidad base
+let recognition;
+let isListening = false;
 
-/* MOTOR DE SCROLL */
-function autoScroll() {
-  if (listening) {
-    scrollPos += speed;
-    viewport.scrollTop = scrollPos;
-  }
-  requestAnimationFrame(autoScroll);
+// Preparar el motor de voz
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if (!SpeechRecognition) {
+  alert("Tu navegador no soporta reconocimiento de voz. Usa Chrome en Android.");
+} else {
+  recognition = new SpeechRecognition();
+  recognition.lang = 'es-ES';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.onresult = (event) => {
+    let interimTranscript = '';
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      interimTranscript += event.results[i][0].transcript;
+    }
+    procesarVoz(interimTranscript.toLowerCase());
+  };
+
+  recognition.onend = () => {
+    if (isListening) recognition.start();
+  };
 }
-autoScroll();
 
-/* CONTROL DE VOZ */
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+function procesarVoz(frase) {
+  const palabrasEscuchadas = frase.split(' ');
+  const ultimaPalabra = palabrasEscuchadas[palabrasEscuchadas.length - 1];
+  
+  // Buscar la palabra en el texto del teleprompter
+  const contenido = textElem.innerText;
+  const index = contenido.toLowerCase().indexOf(ultimaPalabra);
+
+  if (index !== -1) {
+    // Creamos un rango para encontrar la posición física de la palabra
+    const range = document.createRange();
+    const selection = window.getSelection();
+    
+    // Este es un truco para hallar las coordenadas de la palabra dentro del contenteditable
+    // Buscamos el nodo de texto
+    const textNode = textElem.firstChild;
+    if(textNode) {
+        const wordIndex = contenido.toLowerCase().lastIndexOf(ultimaPalabra);
+        range.setStart(textNode, wordIndex);
+        range.setEnd(textNode, wordIndex + ultimaPalabra.length);
+        
+        const rect = range.getBoundingClientRect();
+        const offset = rect.top + viewport.scrollTop - (window.innerHeight / 2);
+        
+        // Hacer el scroll para centrar esa palabra
+        viewport.scrollTo({
+          top: offset,
+          behavior: 'smooth'
+        });
+    }
+  }
+}
 
 micBtn.onclick = () => {
-  if (!SR) {
-    alert("Tu navegador no soporta reconocimiento de voz. El scroll funcionará manualmente.");
-    listening = !listening;
-    actualizarBotonMic();
-    return;
-  }
-
-  if (!listening) {
-    const recognition = new SR();
-    recognition.lang = "es-ES";
-    recognition.continuous = true;
-    
-    recognition.onstart = () => {
-      listening = true;
-      scrollPos = viewport.scrollTop; // Sincroniza posición actual
-      actualizarBotonMic();
-    };
-
-    recognition.onend = () => {
-      if (listening) recognition.start(); // Reinicio automático si se corta
-    };
-
+  if (!isListening) {
     recognition.start();
+    isListening = true;
+    micBtn.classList.add("active");
+    micBtn.innerText = "🛑 Detener";
+    textElem.contentEditable = "false"; // Bloquear edición al leer
   } else {
-    listening = false;
-    actualizarBotonMic();
+    recognition.stop();
+    isListening = false;
+    micBtn.classList.remove("active");
+    micBtn.innerText = "🎙️ Iniciar Voz";
+    textElem.contentEditable = "true";
   }
 };
 
-function actualizarBotonMic() {
-  micBtn.classList.toggle("active-mic", listening);
-}
+// Botones de tamaño
+let fSize = 45;
+document.getElementById("plusBtn").onclick = () => { fSize += 5; textElem.style.fontSize = fSize + "px"; };
+document.getElementById("minusBtn").onclick = () => { fSize -= 5; textElem.style.fontSize = fSize + "px"; };
+document.getElementById("resetBtn").onclick = () => { viewport.scrollTop = 0; };
 
-/* ESPEJO */
-document.getElementById("mirrorBtn").onclick = () => {
-  text.classList.toggle("mirror-mode");
-};
-
-/* TAMAÑO Y MÁRGENES */
-let fontSize = 38;
-document.getElementById("plusBtn").onclick = () => { fontSize += 4; text.style.fontSize = fontSize + "px"; };
-document.getElementById("minusBtn").onclick = () => { fontSize = Math.max(16, fontSize - 4); text.style.fontSize = fontSize + "px"; };
-
-let marginW = 90;
-document.getElementById("marginPlus").onclick = () => { marginW = Math.min(100, marginW + 5); text.style.maxWidth = marginW + "%"; };
-document.getElementById("marginMinus").onclick = () => { marginW = Math.max(30, marginW - 5); text.style.maxWidth = marginW + "%"; };
-
-/* VELOCIDAD */
-document.getElementById("speedUp").onclick = () => { speed += 0.2; };
-document.getElementById("speedDown").onclick = () => { speed = Math.max(0.1, speed - 0.2); };
-
-/* ALINEACIÓN */
-document.getElementById("leftBtn").onclick = () => text.style.textAlign = "left";
-document.getElementById("centerBtn").onclick = () => text.style.textAlign = "center";
 </script>
-
 </body>
 </html>

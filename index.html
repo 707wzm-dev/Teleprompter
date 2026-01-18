@@ -1,3 +1,9 @@
+const password = prompt("Introduce la clave de acceso:");
+if (password !== "benav7l") {
+    document.body.innerHTML = "<h1>Acceso denegado</h1>";
+    window.stop();
+}
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -227,4 +233,5 @@ Si estás en Chrome (Android), busca "Instalar aplicación" en el menú del nave
 </script>
 </body>
 </html>
+
 

@@ -1,162 +1,191 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Teleprompter a mi Ritmo</title>
-<style>
-  body { margin: 0; background: black; color: white; font-family: Arial, sans-serif; overflow: hidden; }
-  
-  #viewport {
-    height: 100vh; overflow-y: hidden;
-    display: flex; flex-direction: column; align-items: center;
-    scroll-behavior: smooth;
-  }
+    <meta charset="UTF-8">
+    <title>Teleprompter Pro</title>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+    
+    <link rel="manifest" href="data:application/manifest+json,{'name':'Teleprompter Pro','short_name':'Prompter','start_url':'.','display':'standalone','background_color':'#000000','theme_color':'#000000'}" />
 
-  #margin-box {
-    width: 80%; padding-top: 50vh; padding-bottom: 80vh;
-    transition: width 0.3s;
-  }
+    <style>
+        :root { --accent: #00ff00; }
+        body { 
+            margin: 0; background: black; color: white; 
+            font-family: system-ui, -apple-system, sans-serif; 
+            overflow: hidden; touch-action: manipulation;
+        }
+        
+        #viewport {
+            height: 100vh; overflow-y: scroll;
+            display: flex; flex-direction: column; align-items: center;
+            scroll-behavior: smooth; -webkit-overflow-scrolling: touch;
+        }
+        #viewport::-webkit-scrollbar { display: none; }
 
-  #text {
-    width: 100%; font-size: 45px; line-height: 1.7;
-    outline: none; white-space: pre-wrap; word-wrap: break-word;
-    color: #888; /* Texto base en gris */
-  }
+        #margin-box {
+            width: 85%; padding-top: 50vh; padding-bottom: 80vh;
+            transition: width 0.3s ease;
+        }
 
-  .mirror { transform: scaleX(-1); }
+        #text {
+            width: 100%; font-size: 42px; line-height: 1.6;
+            outline: none; white-space: pre-wrap; word-wrap: break-word;
+            color: white;
+        }
 
-  /* Indicador de lectura */
-  #guide {
-    position: fixed; top: 50%; left: 0; width: 100%; height: 2px;
-    background: #0f0; opacity: 0.5; pointer-events: none; z-index: 10;
-  }
+        .mirror { transform: scaleX(-1); }
 
-  #controls {
-    position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
-    display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
-    background: rgba(20, 20, 20, 0.9); padding: 12px; border-radius: 12px; z-index: 100;
-  }
+        /* Guía de lectura */
+        #guide {
+            position: fixed; top: 50%; left: 0; width: 100%; height: 2px;
+            background: var(--accent); opacity: 0.4; pointer-events: none; z-index: 10;
+        }
 
-  button {
-    background: #333; color: white; border: none; padding: 10px 15px;
-    border-radius: 6px; cursor: pointer; font-size: 14px;
-  }
+        /* Panel estilo App */
+        #controls {
+            position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+            background: rgba(30, 30, 30, 0.9); padding: 15px; border-radius: 25px;
+            z-index: 100; width: 92%; max-width: 500px;
+            backdrop-filter: blur(15px); border: 1px solid #444;
+        }
 
-  .active { background: #d32f2f !important; box-shadow: 0 0 10px red; }
-</style>
+        button {
+            background: #444; color: white; border: none; padding: 15px 5px;
+            border-radius: 15px; cursor: pointer; font-size: 18px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        button:active { background: #666; transform: scale(0.9); }
+        .active { background: #ff3b30 !important; box-shadow: 0 0 20px rgba(255, 59, 48, 0.6); }
+        .btn-large { grid-column: span 2; font-weight: bold; font-size: 16px; }
+    </style>
 </head>
 <body>
 
 <div id="guide"></div>
 
 <div id="viewport">
-  <div id="margin-box">
-    <div id="text" contenteditable="true" spellcheck="false">Pega tu guion aquí. 
-Al activar la voz, el texto solo se moverá cuando tú hables. 
-Si vas rápido, sube rápido. Si te callas, se detiene.</div>
-  </div>
+    <div id="margin-box">
+        <div id="text" contenteditable="true" spellcheck="false">¡Listo para GitHub! 
+
+1. Pega tu texto.
+2. Pulsa VOZ.
+3. Lee normal. El texto avanzará a tu ritmo y nunca retrocederá.
+
+(Instala esta App desde el menú de Chrome en tu Android).</div>
+    </div>
 </div>
 
 <div id="controls">
-  <button id="micBtn">🎙️ Iniciar Ritmo</button>
-  <button id="mirrorBtn">🪞 Espejo</button>
-  <button id="plusBtn">A+</button>
-  <button id="minusBtn">A-</button>
-  <button id="mPlus">↔️+</button>
-  <button id="mMinus">↔️-</button>
-  <button id="resetBtn">🔄</button>
+    <button id="micBtn" class="btn-large">🎙️ VOZ</button>
+    <button id="mirrorBtn">🪞</button>
+    <button id="plusBtn">A+</button>
+    <button id="minusBtn">A-</button>
+    
+    <button id="mPlus">↔️+</button>
+    <button id="mMinus">↔️-</button>
+    <button id="leftBtn">⬅️</button>
+    <button id="centerBtn">⬆️</button>
+    <button id="rightBtn">➡️</button>
+    <button id="resetBtn">🔄</button>
 </div>
 
 <script>
-const viewport = document.getElementById("viewport");
-const textElem = document.getElementById("text");
-const marginBox = document.getElementById("margin-box");
-const micBtn = document.getElementById("micBtn");
+    const viewport = document.getElementById("viewport");
+    const textElem = document.getElementById("text");
+    const marginBox = document.getElementById("margin-box");
+    const micBtn = document.getElementById("micBtn");
 
-let isListening = false;
-let recognition;
-let lastIndex = 0;
+    let isListening = false;
+    let recognition;
+    let lastFoundIndex = 0;
+    let maxScroll = 0;
 
-// CONFIGURACIÓN DE VOZ
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-if (SR) {
-  recognition = new SR();
-  recognition.lang = 'es-ES';
-  recognition.continuous = true;
-  recognition.interimResults = true;
+    if (SR) {
+        recognition = new SR();
+        recognition.lang = 'es-ES';
+        recognition.continuous = true;
+        recognition.interimResults = true;
 
-  recognition.onresult = (event) => {
-    let transcript = "";
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      transcript += event.results[i][0].transcript;
+        recognition.onresult = (event) => {
+            let transcript = "";
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                transcript += event.results[i][0].transcript;
+            }
+            
+            const palabras = transcript.toLowerCase().trim().split(" ");
+            const ultima = palabras[palabras.length - 1];
+            
+            const contenido = textElem.innerText.toLowerCase();
+            // Buscar solo hacia adelante
+            const index = contenido.indexOf(ultima, lastFoundIndex);
+
+            if (index !== -1) {
+                lastFoundIndex = index;
+                const range = document.createRange();
+                const walker = document.createTreeWalker(textElem, NodeFilter.SHOW_TEXT, null, false);
+                let node, count = 0;
+
+                while (node = walker.nextNode()) {
+                    let nextCount = count + node.textContent.length;
+                    if (index >= count && index < nextCount) {
+                        try {
+                            range.setStart(node, index - count);
+                            range.setEnd(node, index - count + ultima.length);
+                            const rect = range.getBoundingClientRect();
+                            const targetPos = viewport.scrollTop + rect.top - (window.innerHeight / 2);
+
+                            // BLOQUEO DE RETROCESO (Forward-only)
+                            if (targetPos > maxScroll) {
+                                maxScroll = targetPos;
+                                viewport.scrollTo({ top: targetPos, behavior: 'smooth' });
+                            }
+                        } catch(e) {}
+                        break;
+                    }
+                    count = nextCount;
+                }
+            }
+        };
+
+        recognition.onend = () => { if (isListening) recognition.start(); };
     }
-    empujarTexto(transcript.toLowerCase().trim());
-  };
 
-  recognition.onend = () => { if (isListening) recognition.start(); };
-}
+    micBtn.onclick = () => {
+        if (!isListening) {
+            isListening = true;
+            micBtn.classList.add("active");
+            micBtn.innerHTML = "🛑 STOP";
+            textElem.contentEditable = "false";
+            maxScroll = viewport.scrollTop;
+            recognition.start();
+        } else {
+            isListening = false;
+            micBtn.classList.remove("active");
+            micBtn.innerHTML = "🎙️ VOZ";
+            textElem.contentEditable = "true";
+            recognition.stop();
+        }
+    };
 
-function empujarTexto(voz) {
-  const palabras = voz.split(" ");
-  const ultima = palabras[palabras.length - 1];
-  const contenido = textElem.innerText.toLowerCase();
-  
-  // Buscamos la palabra a partir de la última posición conocida para no saltar atrás
-  const index = contenido.indexOf(ultima, lastIndex);
-
-  if (index !== -1) {
-    lastIndex = index; // Actualizamos marcador de progreso
-    const range = document.createRange();
-    const walker = document.createTreeWalker(textElem, NodeFilter.SHOW_TEXT, null, false);
-    let node, count = 0;
-
-    while (node = walker.nextNode()) {
-      let nextCount = count + node.textContent.length;
-      if (index >= count && index < nextCount) {
-        try {
-          range.setStart(node, index - count);
-          range.setEnd(node, index - count + ultima.length);
-          const rect = range.getBoundingClientRect();
-          
-          // Movemos el viewport para que la palabra detectada quede al centro
-          const distAlCentro = rect.top - (window.innerHeight / 2);
-          viewport.scrollTop += distAlCentro;
-          
-        } catch(e) {}
-        break;
-      }
-      count = nextCount;
-    }
-  }
-}
-
-micBtn.onclick = () => {
-  if (!isListening) {
-    isListening = true;
-    lastIndex = 0;
-    micBtn.classList.add("active");
-    micBtn.innerText = "🛑 Detener";
-    textElem.style.color = "white"; // Resaltar texto al empezar
-    textElem.contentEditable = "false";
-    recognition.start();
-  } else {
-    isListening = false;
-    micBtn.classList.remove("active");
-    micBtn.innerText = "🎙️ Iniciar Ritmo";
-    textElem.contentEditable = "true";
-    recognition.stop();
-  }
-};
-
-// CONTROLES BÁSICOS
-document.getElementById("mirrorBtn").onclick = () => textElem.classList.toggle("mirror");
-document.getElementById("plusBtn").onclick = () => { textElem.style.fontSize = (parseInt(window.getComputedStyle(textElem).fontSize) + 4) + "px"; };
-document.getElementById("minusBtn").onclick = () => { textElem.style.fontSize = (parseInt(window.getComputedStyle(textElem).fontSize) - 4) + "px"; };
-document.getElementById("mPlus").onclick = () => { marginBox.style.width = Math.min(100, (marginBox.offsetWidth / window.innerWidth * 100) + 5) + "%"; };
-document.getElementById("mMinus").onclick = () => { marginBox.style.width = Math.max(20, (marginBox.offsetWidth / window.innerWidth * 100) - 5) + "%"; };
-document.getElementById("resetBtn").onclick = () => { viewport.scrollTop = 0; lastIndex = 0; };
+    // BOTONES
+    document.getElementById("mirrorBtn").onclick = () => textElem.classList.toggle("mirror");
+    document.getElementById("plusBtn").onclick = () => textElem.style.fontSize = (parseInt(window.getComputedStyle(textElem).fontSize) + 4) + "px";
+    document.getElementById("minusBtn").onclick = () => textElem.style.fontSize = (parseInt(window.getComputedStyle(textElem).fontSize) - 4) + "px";
+    document.getElementById("mPlus").onclick = () => marginBox.style.width = Math.min(100, (marginBox.offsetWidth / window.innerWidth * 100) + 5) + "%";
+    document.getElementById("mMinus").onclick = () => marginBox.style.width = Math.max(20, (marginBox.offsetWidth / window.innerWidth * 100) - 5) + "%";
+    document.getElementById("leftBtn").onclick = () => textElem.style.textAlign = "left";
+    document.getElementById("centerBtn").onclick = () => textElem.style.textAlign = "center";
+    document.getElementById("rightBtn").onclick = () => textElem.style.textAlign = "right";
+    document.getElementById("resetBtn").onclick = () => { viewport.scrollTo({top:0}); lastFoundIndex = 0; maxScroll = 0; };
 </script>
 </body>
 </html>

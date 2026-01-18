@@ -3,56 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Teleprompter Quirúrgico</title>
+    <title>Teleprompter Studio Stealth</title>
     <style>
+        :root { --panel-bg: rgba(20, 20, 20, 0.95); --accent: #0f0; }
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; }
         
+        /* Área de Texto */
         #viewport {
             height: 100vh; overflow-y: auto; 
             display: flex; flex-direction: column; align-items: center;
         }
         #viewport::-webkit-scrollbar { display: none; }
-        #margin-box { width: 85%; padding-top: 45vh; padding-bottom: 80vh; }
-        #text { width: 100%; font-size: 45px; line-height: 1.6; outline: none; white-space: pre-wrap; }
+        #margin-box { width: 85%; padding-top: 45vh; padding-bottom: 85vh; transition: all 0.3s ease; }
+        #text { width: 100%; font-size: 45px; line-height: 1.6; outline: none; white-space: pre-wrap; text-align: center; }
 
-        /* Monitor de Audio */
-        #audio-container { position: fixed; top: 0; left: 0; width: 100%; height: 8px; background: #222; z-index: 1000; }
-        #audio-bar { height: 100%; background: #0f0; width: 0%; transition: width 0.05s; }
-        #threshold-line { position: absolute; top: 0; height: 100%; width: 2px; background: red; z-index: 1001; }
+        /* Guías y Monitores */
+        #audio-container { position: fixed; top: 0; left: 0; width: 100%; height: 6px; background: #111; z-index: 2000; }
+        #audio-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.05s; }
+        #threshold-line { position: absolute; top: 0; height: 100%; width: 2px; background: red; z-index: 2001; }
+        #guide { position: fixed; top: 50%; left: 0; width: 100%; height: 2px; background: rgba(0, 255, 0, 0.25); pointer-events: none; }
 
-        #guide { position: fixed; top: 50%; left: 0; width: 100%; height: 2px; background: rgba(0, 255, 0, 0.3); pointer-events: none; }
-
-        /* Panel de Control de Alta Precisión */
-        #controls {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-            background: rgba(25, 25, 25, 0.98); padding: 20px; border-radius: 25px;
-            width: 92%; max-width: 480px; border: 1px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        /* Botón para abrir el Menú */
+        #menuToggle {
+            position: fixed; bottom: 20px; right: 20px; width: 55px; height: 55px;
+            background: #333; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; font-size: 24px; z-index: 3000; border: 1px solid #555;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); cursor: pointer;
         }
 
+        /* Panel Desplegable (Drawer) */
+        #sidePanel {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: auto;
+            max-height: 70vh; background: var(--panel-bg); z-index: 2500;
+            border-top: 1px solid #444; border-radius: 25px 25px 0 0;
+            transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 20px; box-sizing: border-box; overflow-y: auto;
+            backdrop-filter: blur(15px);
+        }
+        #sidePanel.open { transform: translateY(0); }
+
+        /* Controles Quirúrgicos */
+        .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
         .step-control {
-            display: flex; flex-direction: column; align-items: center; gap: 8px;
-            background: #1a1a1a; padding: 10px; border-radius: 15px; border: 1px solid #333;
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            background: #111; padding: 10px; border-radius: 15px; border: 1px solid #333;
         }
-        .step-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-        .step-buttons { display: flex; align-items: center; gap: 15px; }
-        .val-display { font-size: 22px; font-weight: bold; color: #0f0; min-width: 40px; text-align: center; font-family: monospace; }
+        .step-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .step-buttons { display: flex; align-items: center; gap: 12px; }
+        .val-display { font-size: 20px; font-weight: bold; color: var(--accent); min-width: 35px; text-align: center; font-family: monospace; }
         
-        button { 
-            background: #3a3a3a; color: white; border: none; 
-            width: 45px; height: 45px; border-radius: 12px; 
-            font-size: 20px; font-weight: bold; cursor: pointer;
-        }
-        button:active { background: #555; transform: scale(0.95); }
+        button { background: #333; color: white; border: none; width: 42px; height: 42px; border-radius: 12px; font-size: 20px; cursor: pointer; }
+        button:active { transform: scale(0.9); background: #444; }
         
         #startBtn { 
-            grid-column: span 2; background: #333; height: 55px; font-size: 16px; 
-            letter-spacing: 1px; border: 1px solid #555;
+            width: 100%; height: 55px; background: #222; color: white; border: 1px solid #444;
+            border-radius: 15px; font-weight: bold; font-size: 16px; margin-bottom: 10px;
         }
-        .active { background: #d32f2f !important; border-color: #ff5555 !important; }
+        #startBtn.active { background: #d32f2f; border-color: #ff5555; }
         
-        .extra-btns { grid-column: span 2; display: flex; gap: 10px; }
-        .extra-btns button { flex: 1; height: 40px; font-size: 14px; background: #222; }
+        .footer-row { display: flex; gap: 10px; margin-top: 12px; }
+        .footer-row button { flex: 1; font-size: 16px; background: #222; }
     </style>
 </head>
 <body>
@@ -65,73 +75,97 @@
 
 <div id="viewport">
     <div id="margin-box">
-        <div id="text" contenteditable="true" spellcheck="false">¡CONTROL QUIRÚRGICO!
-Ajusta la SENSIBILIDAD hasta que solo tu voz active la barra verde.
-Ajusta la VELOCIDAD punto por punto para que el scroll sea perfecto.</div>
+        <div id="text" contenteditable="true" spellcheck="false">Pantalla limpia. 
+Toca el icono de engranaje ⚙️ para abrir los ajustes.
+Configura y luego cierra el menú para grabar sin distracciones.</div>
     </div>
 </div>
 
-<div id="controls">
-    <button id="startBtn">🎙️ ACTIVAR SENSOR</button>
+<div id="menuToggle">⚙️</div>
+
+<div id="sidePanel">
+    <button id="startBtn">🎙️ ACTIVAR SENSOR POR VOZ</button>
     
-    <div class="step-control">
-        <span class="step-label">Velocidad</span>
-        <div class="step-buttons">
-            <button onclick="changeVal('speed', -1)">-</button>
-            <span id="speedVal" class="val-display">25</span>
-            <button onclick="changeVal('speed', 1)">+</button>
+    <div class="controls-grid">
+        <div class="step-control">
+            <span class="step-label">Velocidad</span>
+            <div class="step-buttons">
+                <button onclick="changeVal('speed', -1)">-</button>
+                <span id="speedVal" class="val-display">25</span>
+                <button onclick="changeVal('speed', 1)">+</button>
+            </div>
+        </div>
+        <div class="step-control">
+            <span class="step-label">Sensibilidad</span>
+            <div class="step-buttons">
+                <button onclick="changeVal('sens', -1)">-</button>
+                <span id="sensVal" class="val-display">15</span>
+                <button onclick="changeVal('sens', 1)">+</button>
+            </div>
+        </div>
+        <div class="step-control">
+            <span class="step-label">Texto (A)</span>
+            <div class="step-buttons">
+                <button onclick="changeVal('fontSize', -2)">-</button>
+                <span id="fontSizeVal" class="val-display">45</span>
+                <button onclick="changeVal('fontSize', 2)">+</button>
+            </div>
+        </div>
+        <div class="step-control">
+            <span class="step-label">Márgenes</span>
+            <div class="step-buttons">
+                <button onclick="changeVal('margin', -5)">-</button>
+                <span id="marginVal" class="val-display">85</span>
+                <button onclick="changeVal('margin', 5)">+</button>
+            </div>
         </div>
     </div>
 
-    <div class="step-control">
-        <span class="step-label">Sensibilidad</span>
-        <div class="step-buttons">
-            <button onclick="changeVal('sens', -1)">-</button>
-            <span id="sensVal" class="val-display">15</span>
-            <button onclick="changeVal('sens', 1)">+</button>
-        </div>
-    </div>
-
-    <div class="extra-btns">
-        <button id="mirrorBtn">🪞 ESPEJO</button>
-        <button id="resetBtn">🔄 RESET</button>
+    <div class="footer-row">
+        <button id="alignBtn" title="Alineación">≡</button>
+        <button id="mirrorBtn">🪞</button>
+        <button id="resetBtn">🔄</button>
     </div>
 </div>
 
 <script>
     const viewport = document.getElementById('viewport');
     const textElem = document.getElementById('text');
+    const marginBox = document.getElementById('margin-box');
     const audioBar = document.getElementById('audio-bar');
     const thresholdLine = document.getElementById('threshold-line');
+    const sidePanel = document.getElementById('sidePanel');
+    const menuToggle = document.getElementById('menuToggle');
     const startBtn = document.getElementById('startBtn');
 
-    let audioContext, analyser, dataArray;
-    let isRunning = false;
-    let scrollPos = 0;
-    
-    // Valores de estado
-    let config = {
-        speed: 25,
-        sens: 15
-    };
+    let audioContext, analyser, dataArray, isRunning = false, scrollPos = 0;
+    let config = { speed: 25, sens: 15, fontSize: 45, margin: 85, alignIdx: 1 };
+    const aligns = ['left', 'center', 'right'];
+
+    // Toggle del Menú
+    menuToggle.onclick = () => sidePanel.classList.toggle('open');
 
     function changeVal(type, delta) {
-        config[type] = Math.max(1, Math.min(100, config[type] + delta));
+        if(type === 'fontSize') config[type] = Math.max(10, Math.min(120, config[type] + delta));
+        else if(type === 'margin') config[type] = Math.max(20, Math.min(100, config[type] + delta));
+        else config[type] = Math.max(1, Math.min(100, config[type] + delta));
+
         document.getElementById(type + 'Val').innerText = config[type];
-        if(type === 'sens') {
-            thresholdLine.style.left = config.sens + "%";
-        }
+        if(type === 'sens') thresholdLine.style.left = config.sens + "%";
+        if(type === 'fontSize') textElem.style.fontSize = config.fontSize + "px";
+        if(type === 'margin') marginBox.style.width = config.margin + "%";
     }
 
-    thresholdLine.style.left = config.sens + "%";
+    document.getElementById('alignBtn').onclick = () => {
+        config.alignIdx = (config.alignIdx + 1) % 3;
+        textElem.style.textAlign = aligns[config.alignIdx];
+    };
 
     function mainLoop() {
         if (isRunning && analyser) {
             analyser.getByteFrequencyData(dataArray);
-            let values = 0;
-            for (let i = 0; i < dataArray.length; i++) values += dataArray[i];
-            let volume = (values / dataArray.length) * 1.5;
-
+            let sum = 0; for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+            let volume = (sum / dataArray.length) * 1.5;
             audioBar.style.width = Math.min(volume, 100) + "%";
 
             if (volume > config.sens) {
@@ -143,37 +177,29 @@ Ajusta la VELOCIDAD punto por punto para que el scroll sea perfecto.</div>
     }
     mainLoop();
 
-    async function startMic() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            analyser = audioContext.createAnalyser();
-            const source = audioContext.createMediaStreamSource(stream);
-            source.connect(analyser);
-            analyser.fftSize = 256;
-            dataArray = new Uint8Array(analyser.frequencyBinCount);
-            return true;
-        } catch (err) {
-            alert("Acceso denegado al micro.");
-            return false;
-        }
-    }
-
     startBtn.onclick = async () => {
         if (!isRunning) {
-            const ok = await startMic();
-            if (ok) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                const source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+                analyser.fftSize = 256;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
                 if (audioContext.state === 'suspended') await audioContext.resume();
                 isRunning = true;
                 scrollPos = viewport.scrollTop;
                 startBtn.classList.add('active');
-                startBtn.innerText = "🛑 SENSOR ACTIVO";
+                startBtn.innerText = "🛑 DETENER SENSOR";
                 textElem.contentEditable = "false";
-            }
+                // Cerramos menú automáticamente al empezar para limpiar pantalla
+                setTimeout(() => sidePanel.classList.remove('open'), 500);
+            } catch (e) { alert("Micro denegado."); }
         } else {
             isRunning = false;
             startBtn.classList.remove('active');
-            startBtn.innerText = "🎙️ ACTIVAR SENSOR";
+            startBtn.innerText = "🎙️ ACTIVAR SENSOR POR VOZ";
             textElem.contentEditable = "true";
         }
     };

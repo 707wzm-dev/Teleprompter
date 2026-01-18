@@ -11,19 +11,22 @@ body {
   background: black;
   color: white;
   font-family: Arial, sans-serif;
+  overflow: hidden;
 }
 
 #viewport {
   height: 100vh;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 #text {
   padding: 40px;
+  padding-bottom: 60vh; /* evita que se corte al final */
   font-size: 38px;
   line-height: 1.4;
   max-width: 90%;
   margin: auto;
+  transform-origin: top;
 }
 
 .mirror {
@@ -57,8 +60,8 @@ button {
   <div id="text" contenteditable="true">
 Pega aquí tu texto del teleprompter.
 
-Pulsa 🎙️ una vez para activar el micrófono.
-Lee y el texto avanzará solo.
+Pulsa 🎙️ una vez para iniciar.
+Pulsa otra vez para detener.
   </div>
 </div>
 
@@ -88,14 +91,23 @@ const leftBtn = document.getElementById("leftBtn");
 const centerBtn = document.getElementById("centerBtn");
 const rightBtn = document.getElementById("rightBtn");
 
-let recognition = null;
+let recognition;
 let listening = false;
-let font = 38;
-let width = 90;
-let mirrored = false;
 
-/* MICRÓFONO */
-micBtn.addEventListener("click", () => {
+/* SCROLL SUAVE */
+let scrolling = false;
+let speed = 0.35; // ajusta si quieres más rápido o lento
+
+function smoothScroll() {
+  if (scrolling) {
+    viewport.scrollTop += speed;
+  }
+  requestAnimationFrame(smoothScroll);
+}
+smoothScroll();
+
+/* MICRÓFONO (solo ON / OFF) */
+micBtn.onclick = () => {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
     alert("Este navegador no soporta reconocimiento de voz");
@@ -108,59 +120,53 @@ micBtn.addEventListener("click", () => {
     recognition.continuous = true;
     recognition.interimResults = false;
 
-    recognition.onresult = () => {
-      viewport.scrollTop += 14;
-    };
-
     recognition.onend = () => {
       if (listening) recognition.start();
     };
 
     recognition.start();
+    scrolling = true;
     listening = true;
     micBtn.style.background = "green";
   } else {
     listening = false;
+    scrolling = false;
     recognition.stop();
     micBtn.style.background = "";
   }
-});
+};
 
 /* ESPEJO */
-mirrorBtn.addEventListener("click", () => {
-  mirrored = !mirrored;
-  viewport.classList.toggle("mirror", mirrored);
-});
+mirrorBtn.onclick = () => {
+  viewport.classList.toggle("mirror");
+};
 
-/* TEXTO */
-plusBtn.addEventListener("click", () => {
+/* TAMAÑO TEXTO */
+let font = 38;
+plusBtn.onclick = () => {
   font += 2;
   text.style.fontSize = font + "px";
-});
-
-minusBtn.addEventListener("click", () => {
-  font -= 2;
-  if (font < 16) font = 16;
+};
+minusBtn.onclick = () => {
+  font = Math.max(16, font - 2);
   text.style.fontSize = font + "px";
-});
+};
 
-/* MÁRGENES */
-marginPlus.addEventListener("click", () => {
-  width += 5;
-  if (width > 100) width = 100;
+/* MÁRGENES (FUNCIONAN REALMENTE) */
+let width = 90;
+marginPlus.onclick = () => {
+  width = Math.min(100, width + 5);
   text.style.maxWidth = width + "%";
-});
-
-marginMinus.addEventListener("click", () => {
-  width -= 5;
-  if (width < 40) width = 40;
+};
+marginMinus.onclick = () => {
+  width = Math.max(40, width - 5);
   text.style.maxWidth = width + "%";
-});
+};
 
 /* ALINEACIÓN */
-leftBtn.addEventListener("click", () => text.style.textAlign = "left");
-centerBtn.addEventListener("click", () => text.style.textAlign = "center");
-rightBtn.addEventListener("click", () => text.style.textAlign = "right");
+leftBtn.onclick = () => text.style.textAlign = "left";
+centerBtn.onclick = () => text.style.textAlign = "center";
+rightBtn.onclick = () => text.style.textAlign = "right";
 </script>
 
 </body>

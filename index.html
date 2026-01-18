@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Teleprompter Pro Voz</title>
+<title>Teleprompter Voz - Final</title>
 <style>
   body {
     margin: 0; background: black; color: white;
@@ -12,50 +12,63 @@
 
   #viewport {
     height: 100vh;
-    overflow-y: auto; /* Cambiado para permitir desplazamiento */
+    overflow-y: auto;
     scroll-behavior: smooth;
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
-  /* Ocultar scrollbar */
   #viewport::-webkit-scrollbar { display: none; }
 
-  #text-container {
-    display: inline-block;
-    padding: 50vh 0; /* Espacio para centrar primera y última línea */
-    width: 90%; /* Margen inicial */
+  /* Contenedor de márgenes */
+  #margin-box {
+    width: 90%; /* Este es el que controlan los botones de margen */
+    padding-top: 50vh;
+    padding-bottom: 80vh;
+    transition: width 0.3s ease;
+  }
+
+  /* El área de texto editable */
+  #text {
+    width: 100%;
     font-size: 40px;
     line-height: 1.6;
     outline: none;
-    transition: width 0.3s ease; /* Transición suave para márgenes */
+    white-space: pre-wrap; /* Mantiene los saltos de línea al editar */
+    word-wrap: break-word;
+    min-height: 200px;
   }
 
   .mirror { transform: scaleX(-1); }
-  
-  .highlight { color: #2ecc71; transition: color 0.3s; }
 
   #controls {
-    position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
+    position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%);
     display: flex; flex-wrap: wrap; justify-content: center;
-    gap: 6px; background: rgba(20,20,20,0.95);
-    padding: 10px; border-radius: 12px; z-index: 100; width: 95%; max-width: 600px;
+    gap: 8px; background: rgba(25,25,25,0.95);
+    padding: 12px; border-radius: 15px; z-index: 100; width: 92%; max-width: 550px;
+    border: 1px solid #444;
   }
 
   button {
-    font-size: 14px; padding: 8px 10px; cursor: pointer;
-    background: #333; color: white; border: 1px solid #555; border-radius: 5px;
+    font-size: 14px; padding: 10px; cursor: pointer;
+    background: #333; color: white; border: none; border-radius: 6px;
+    flex-grow: 1; min-width: 45px;
   }
 
-  .active-mic { background: #c0392b !important; border-color: #e74c3c; }
+  button:active { background: #555; }
+  .active-mic { background: #d32f2f !important; animation: pulse 1.5s infinite; }
+  
+  @keyframes pulse {
+    0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; }
+  }
 </style>
 </head>
 <body>
 
 <div id="viewport">
-  <div id="text-container" contenteditable="true" spellcheck="false">
-    Pega tu texto aquí. <br><br>
-    Pulsa el micrófono y lee con calma. El sistema detectará tu voz y centrará la línea automáticamente. 
-    Usa los botones para ajustar márgenes y modo espejo.
+  <div id="margin-box">
+    <div id="text" contenteditable="true" spellcheck="false">Pega o escribe tu texto aquí...</div>
   </div>
 </div>
 
@@ -74,13 +87,14 @@
 
 <script>
 const viewport = document.getElementById("viewport");
-const textContainer = document.getElementById("text-container");
+const textElem = document.getElementById("text");
+const marginBox = document.getElementById("margin-box");
 const micBtn = document.getElementById("micBtn");
 
 let isListening = false;
 let recognition;
 
-// 1. LÓGICA DE VOZ
+// RECONOCIMIENTO DE VOZ
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (SpeechRecognition) {
   recognition = new SpeechRecognition();
@@ -89,87 +103,73 @@ if (SpeechRecognition) {
   recognition.interimResults = true;
 
   recognition.onresult = (event) => {
-    let currentText = "";
+    let interimTranscript = '';
     for (let i = event.resultIndex; i < event.results.length; i++) {
-      currentText += event.results[i][0].transcript;
+      interimTranscript += event.results[i][0].transcript;
     }
-    buscarYCentrar(currentText.toLowerCase().trim());
+    scrollPorVoz(interimTranscript.toLowerCase().trim());
   };
 
   recognition.onend = () => { if (isListening) recognition.start(); };
 }
 
-function buscarYCentrar(fraseEscuchada) {
-  const palabras = fraseEscuchada.split(" ");
-  const ultimaPalabra = palabras[palabras.length - 1];
-  
-  // Buscamos la palabra dentro del contenedor
-  const contenido = textContainer.innerText.toLowerCase();
-  const index = contenido.lastIndexOf(ultimaPalabra);
+function scrollPorVoz(voz) {
+  const palabras = voz.split(" ");
+  const ultima = palabras[palabras.length - 1];
+  const contenido = textElem.innerText.toLowerCase();
+  const index = contenido.lastIndexOf(ultima);
 
   if (index !== -1) {
     const range = document.createRange();
-    const selection = window.getSelection();
-    
-    // Encontrar el nodo de texto exacto
-    let walker = document.createTreeWalker(textContainer, NodeFilter.SHOW_TEXT, null, false);
-    let node;
-    let charCount = 0;
+    const walker = document.createTreeWalker(textElem, NodeFilter.SHOW_TEXT, null, false);
+    let node, charCount = 0;
 
     while (node = walker.nextNode()) {
-      let nextCharCount = charCount + node.textContent.length;
-      if (index >= charCount && index < nextCharCount) {
+      let nextCount = charCount + node.textContent.length;
+      if (index >= charCount && index < nextCount) {
         try {
           range.setStart(node, index - charCount);
-          range.setEnd(node, (index - charCount) + ultimaPalabra.length);
-          
+          range.setEnd(node, index - charCount + ultima.length);
           const rect = range.getBoundingClientRect();
-          const targetY = viewport.scrollTop + rect.top - (window.innerHeight / 2);
-          
-          viewport.scrollTo({ top: targetY, behavior: 'smooth' });
+          const offset = viewport.scrollTop + rect.top - (window.innerHeight / 2);
+          viewport.scrollTo({ top: offset, behavior: 'smooth' });
         } catch(e) {}
         break;
       }
-      charCount = nextCharCount;
+      charCount = nextCount;
     }
   }
 }
 
-// 2. BOTONES Y FUNCIONES
+// FUNCIONES DE BOTONES
 micBtn.onclick = () => {
   if (!isListening) {
-    recognition.start();
+    if (!SpeechRecognition) return alert("Navegador no compatible.");
     isListening = true;
     micBtn.classList.add("active-mic");
-    textContainer.contentEditable = "false";
+    textElem.contentEditable = "false"; // Bloqueamos solo durante la lectura
+    recognition.start();
   } else {
-    recognition.stop();
     isListening = false;
     micBtn.classList.remove("active-mic");
-    textContainer.contentEditable = "true";
+    textElem.contentEditable = "true"; // Volvemos a permitir edición
+    recognition.stop();
   }
 };
 
-document.getElementById("mirrorBtn").onclick = () => viewport.classList.toggle("mirror");
+document.getElementById("mirrorBtn").onclick = () => textElem.classList.toggle("mirror");
 
 let fSize = 40;
-document.getElementById("plusBtn").onclick = () => { fSize += 4; textContainer.style.fontSize = fSize + "px"; };
-document.getElementById("minusBtn").onclick = () => { fSize = Math.max(16, fSize - 4); textContainer.style.fontSize = fSize + "px"; };
+document.getElementById("plusBtn").onclick = () => { fSize += 4; textElem.style.fontSize = fSize + "px"; };
+document.getElementById("minusBtn").onclick = () => { fSize = Math.max(16, fSize - 4); textElem.style.fontSize = fSize + "px"; };
 
-// MÁRGENES CORREGIDOS: Ajustamos el ancho del contenedor interno
-let currentWidth = 90;
-document.getElementById("marginPlus").onclick = () => { 
-  currentWidth = Math.min(100, currentWidth + 5); 
-  textContainer.style.width = currentWidth + "%"; 
-};
-document.getElementById("marginMinus").onclick = () => { 
-  currentWidth = Math.max(20, currentWidth - 5); 
-  textContainer.style.width = currentWidth + "%"; 
-};
+let mWidth = 90;
+document.getElementById("marginPlus").onclick = () => { mWidth = Math.min(100, mWidth + 5); marginBox.style.width = mWidth + "%"; };
+document.getElementById("marginMinus").onclick = () => { mWidth = Math.max(20, mWidth - 5); marginBox.style.width = mWidth + "%"; };
 
-document.getElementById("leftBtn").onclick = () => textContainer.style.textAlign = "left";
-document.getElementById("centerBtn").onclick = () => textContainer.style.textAlign = "center";
-document.getElementById("rightBtn").onclick = () => textContainer.style.textAlign = "right";
+document.getElementById("leftBtn").onclick = () => textElem.style.textAlign = "left";
+document.getElementById("centerBtn").onclick = () => textElem.style.textAlign = "center";
+document.getElementById("rightBtn").onclick = () => textElem.style.textAlign = "right";
 
 document.getElementById("resetBtn").onclick = () => { viewport.scrollTo({top: 0, behavior: 'smooth'}); };
 </script>

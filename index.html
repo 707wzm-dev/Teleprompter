@@ -160,12 +160,35 @@ Toca el icono ⚙️ arriba para configurar.</div>
     let config = { speed: 25, sens: 15, fontSize: 45, margin: 85, alignIdx: 1, mirror: false };
     const aligns = ['left', 'center', 'right'];
 
+    // --- SISTEMA MANTENER PANTALLA ACTIVA (WAKE LOCK) ---
+    let wakeLock = null;
+
+    async function requestWakeLock() {
+        try {
+            if ('wakeLock' in navigator) {
+                wakeLock = await navigator.wakeLock.request('screen');
+                console.log("Pantalla bloqueada (Siempre encendida)");
+            }
+        } catch (err) {
+            console.log("Error con Wake Lock:", err.message);
+        }
+    }
+
+    // Activar al primer toque en la pantalla (requerido por navegadores)
+    document.addEventListener('click', () => {
+        if (!wakeLock) requestWakeLock();
+    }, { once: false });
+
+    // Re-activar si el usuario sale y vuelve a la app
+    document.addEventListener('visibilitychange', async () => {
+        if (wakeLock !== null && document.visibilityState === 'visible') {
+            await requestWakeLock();
+        }
+    });
+
     // --- FUNCIONES DE GUARDADO ---
     function saveData() {
-        const data = {
-            config: config,
-            text: textElem.innerText
-        };
+        const data = { config: config, text: textElem.innerText };
         localStorage.setItem('teleprompter_pro_data', JSON.stringify(data));
     }
 
@@ -175,38 +198,30 @@ Toca el icono ⚙️ arriba para configurar.</div>
             const data = JSON.parse(saved);
             config = data.config;
             textElem.innerText = data.text;
-            
-            // Aplicar visualmente los valores cargados
             document.getElementById('speedVal').innerText = config.speed;
             document.getElementById('sensVal').innerText = config.sens;
             document.getElementById('fontSizeVal').innerText = config.fontSize;
             document.getElementById('marginVal').innerText = config.margin;
-            
             thresholdLine.style.left = config.sens + "%";
             textElem.style.fontSize = config.fontSize + "px";
             marginBox.style.width = config.margin + "%";
             textElem.style.textAlign = aligns[config.alignIdx];
-            
             if(config.mirror) marginBox.classList.add('mirror-active');
         }
     }
 
-    // Guardar texto automáticamente al escribir
     textElem.addEventListener('input', saveData);
-
     menuToggle.onclick = () => sidePanel.classList.toggle('open');
 
     function changeVal(type, delta) {
         if(type === 'fontSize') config[type] = Math.max(10, Math.min(120, config[type] + delta));
         else if(type === 'margin') config[type] = Math.max(20, Math.min(100, config[type] + delta));
         else config[type] = Math.max(1, Math.min(100, config[type] + delta));
-
         document.getElementById(type + 'Val').innerText = config[type];
         if(type === 'sens') thresholdLine.style.left = config.sens + "%";
         if(type === 'fontSize') textElem.style.fontSize = config.fontSize + "px";
         if(type === 'margin') marginBox.style.width = config.margin + "%";
-        
-        saveData(); // Guardar cada vez que se cambia un ajuste
+        saveData();
     }
 
     document.getElementById('alignBtn').onclick = () => {
@@ -263,8 +278,6 @@ Toca el icono ⚙️ arriba para configurar.</div>
     };
 
     document.getElementById('resetBtn').onclick = () => { scrollPos = 0; viewport.scrollTop = 0; };
-
-    // Cargar datos al iniciar
     window.onload = loadData;
 </script>
 </body>

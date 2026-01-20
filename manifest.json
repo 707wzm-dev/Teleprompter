@@ -1,6 +1,6 @@
 {
-  "name": "Teleprompter Studio Pro",
-  "short_name": "7LPrompter",
+  "name": "TPrompter7L",
+  "short_name": "TPrompter7L",
   "description": "Teleprompter profesional con sensor de voz",
   "start_url": "index.html",
   "display": "standalone",

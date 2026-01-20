@@ -62,22 +62,13 @@
         #startBtn { width: 100%; height: 55px; background: #222; color: white; border: 1px solid #444; border-radius: 15px; font-weight: bold; font-size: 16px; margin-bottom: 10px; }
         #startBtn.active { background: #d32f2f; border-color: #ff5555; }
         
-        .file-box { display: flex; gap: 10px; margin-bottom: 20px; }
-        #noteName { flex: 1; background: #000; border: 1px solid #444; color: #fff; padding: 12px; border-radius: 12px; outline: none; font-size: 16px; }
-        #notesList { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
-        .note-item { 
-            display: flex; justify-content: space-between; align-items: center; 
-            background: rgba(255,255,255,0.05); padding: 12px 15px; border-radius: 15px; border: 1px solid #333;
-        }
-        .note-item span { flex: 1; font-size: 15px; }
-        .btn-del { color: #ff5555; background: none; border: none; font-size: 18px; padding-left: 10px; }
-
         .footer-row { display: flex; gap: 10px; margin-top: 12px; }
-        .footer-row button { flex: 1; height: 45px; font-size: 14px; background: #222; border: 1px solid #333; color: white; border-radius: 12px; }
+        .footer-row button { flex: 1; height: 50px; font-size: 14px; background: #222; border: 1px solid #333; color: white; border-radius: 12px; font-weight: bold;}
         
-        /* Botones de copia de seguridad */
-        .backup-row { display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid #333; padding-top: 15px; }
-        .backup-row button { flex: 1; height: 35px; font-size: 11px; background: #111; border: 1px solid #444; color: #aaa; border-radius: 8px; text-transform: uppercase; }
+        .file-input-box {
+            background: #111; border: 1px solid #333; padding: 15px; border-radius: 15px; margin-bottom: 15px;
+        }
+        #noteName { width: 100%; background: #000; border: 1px solid #444; color: #fff; padding: 12px; border-radius: 10px; outline: none; box-sizing: border-box; margin-bottom: 10px;}
     </style>
 </head>
 <body>
@@ -91,27 +82,22 @@
 <div id="viewport">
     <div id="margin-box">
         <div id="text" contenteditable="true" spellcheck="false">¡Bienvenido!
-Escribe o carga un guion para comenzar.</div>
+Sube un archivo .txt o escribe tu guion aquí.</div>
     </div>
 </div>
 
 <div id="filePanel" class="side-panel">
-    <span class="section-label">Gestión de Guiones</span>
-    <div class="file-box">
-        <input id="noteName" type="text" placeholder="Nombre del archivo...">
-        <button class="ctrl-btn" onclick="saveNewNote()">💾</button>
-    </div>
+    <span class="section-label">Gestión de Archivos .txt</span>
     
-    <div id="notesList"></div>
+    <div class="file-input-box">
+        <input id="noteName" type="text" placeholder="Nombre para el archivo...">
+        <button id="startBtn" onclick="exportTxt()" style="background: #004400; margin:0;">📥 GUARDAR EN DISPOSITIVO (.txt)</button>
+    </div>
 
     <div class="footer-row">
-        <button onclick="newFile()">📄 Nuevo</button>
-    </div>
-
-    <div class="backup-row">
-        <button onclick="exportBackup()">📥 Descargar Copia</button>
-        <button onclick="document.getElementById('importInput').click()">📤 Subir Copia</button>
-        <input type="file" id="importInput" style="display:none" onchange="importBackup(this)">
+        <button onclick="document.getElementById('importInput').click()">📤 ABRIR ARCHIVO (.txt)</button>
+        <button onclick="newFile()" style="background: #333;">📄 LIMPIAR PANTALLA</button>
+        <input type="file" id="importInput" style="display:none" accept=".txt" onchange="importTxt(this)">
     </div>
 </div>
 
@@ -175,81 +161,40 @@ Escribe o carga un guion para comenzar.</div>
     document.getElementById('menuToggle').onclick = () => { filePanel.classList.remove('open'); configPanel.classList.toggle('open'); };
     document.getElementById('fileToggle').onclick = () => { configPanel.classList.remove('open'); filePanel.classList.toggle('open'); };
 
-    // --- SISTEMA DE ARCHIVOS ---
-    function newFile() { textElem.innerText = "¡Listo! Escribe tu guion..."; filePanel.classList.remove('open'); }
+    function newFile() { textElem.innerText = "Escribe o sube un archivo..."; filePanel.classList.remove('open'); }
 
-    function saveNewNote() {
-        const name = document.getElementById('noteName').value.trim();
-        if (!name) return alert("Escribe un nombre");
-        const library = JSON.parse(localStorage.getItem('tele_library_pro') || '{}');
-        library[name] = textElem.innerText;
-        localStorage.setItem('tele_library_pro', JSON.stringify(library));
-        document.getElementById('noteName').value = '';
-        refreshNotesList();
-    }
-
-    function refreshNotesList() {
-        const library = JSON.parse(localStorage.getItem('tele_library_pro') || '{}');
-        const list = document.getElementById('notesList');
-        list.innerHTML = '';
-        Object.keys(library).forEach(name => {
-            const div = document.createElement('div');
-            div.className = 'note-item';
-            div.innerHTML = `<span onclick="loadNote('${name}')">📄 ${name}</span><button class="btn-del" onclick="deleteNote('${name}')">🗑️</button>`;
-            list.appendChild(div);
-        });
-    }
-
-    function loadNote(name) {
-        const library = JSON.parse(localStorage.getItem('tele_library_pro') || '{}');
-        textElem.innerText = library[name];
-        filePanel.classList.remove('open');
-    }
-
-    function deleteNote(name) {
-        if(confirm(`¿Borrar "${name}"?`)) {
-            const library = JSON.parse(localStorage.getItem('tele_library_pro') || '{}');
-            delete library[name];
-            localStorage.setItem('tele_library_pro', JSON.stringify(library));
-            refreshNotesList();
-        }
-    }
-
-    // --- EXPORTAR E IMPORTAR (GUARDAR EN DISPOSITIVO) ---
-    function exportBackup() {
-        const library = localStorage.getItem('tele_library_pro') || '{}';
-        const blob = new Blob([library], { type: 'application/json' });
+    // --- FUNCIONES TXT PURO ---
+    function exportTxt() {
+        const text = textElem.innerText;
+        const name = document.getElementById('noteName').value.trim() || "mi_guion";
+        const blob = new Blob([text], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `mis_guiones_${new Date().toLocaleDateString()}.json`;
+        a.download = `${name}.txt`;
         a.click();
+        URL.revokeObjectURL(url);
     }
 
-    function importBackup(input) {
+    function importTxt(input) {
         const file = input.files[0];
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (e) => {
-            try {
-                const imported = JSON.parse(e.target.result);
-                const library = JSON.parse(localStorage.getItem('tele_library_pro') || '{}');
-                const combined = { ...library, ...imported }; // Combina los actuales con los subidos
-                localStorage.setItem('tele_library_pro', JSON.stringify(combined));
-                refreshNotesList();
-                alert("Guiones importados con éxito");
-            } catch (err) { alert("Archivo no válido"); }
+            textElem.innerText = e.target.result;
+            filePanel.classList.remove('open');
+            alert("Archivo .txt cargado");
         };
         reader.readAsText(file);
+        input.value = '';
     }
 
-    // --- CONFIG ---
+    // --- CONFIGURACIÓN ---
     function saveConfig() { localStorage.setItem('tele_settings_only', JSON.stringify(config)); }
 
     function loadData() {
         const savedSettings = localStorage.getItem('tele_settings_only');
         if (savedSettings) { config = JSON.parse(savedSettings); applyConfig(); }
-        refreshNotesList();
     }
 
     function applyConfig() {
